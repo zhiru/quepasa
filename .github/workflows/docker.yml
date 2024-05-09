@@ -1,11 +1,11 @@
 name: Build and Push Docker Image to Docker Hub
 
 on:
-  push:
-    branches:
-      - "**"
-    tags:
-      - v*      
+  # push:
+  #   branches:
+  #     - "**"
+  #   tags:
+  #     - v*
   workflow_dispatch:
 
 env:  
