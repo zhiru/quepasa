@@ -3,7 +3,6 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
@@ -20,8 +19,9 @@ func RegisterAPIControllers(r chi.Router) {
 
 		// CONTROL METHODS ************************
 		// ----------------------------------------
-		r.Get(endpoint+"/info", InformationControllerV3)
-		r.Patch(endpoint+"/info", UserController)
+		r.Get(endpoint+"/info", InformationController)
+		r.Patch(endpoint+"/info", InformationController)
+		r.Delete(endpoint+"/info", InformationController)
 
 		r.Get(endpoint+"/scan", ScannerController)
 		r.Get(endpoint+"/command", CommandController)
@@ -31,6 +31,9 @@ func RegisterAPIControllers(r chi.Router) {
 
 		// SENDING MSG ----------------------------
 		// ----------------------------------------
+
+		r.Get(endpoint+"/message/{messageid}", GetMessageController)
+		r.Get(endpoint+"/message", GetMessageController)
 
 		r.Delete(endpoint+"/message/{messageid}", RevokeController)
 		r.Delete(endpoint+"/message", RevokeController)
@@ -48,7 +51,7 @@ func RegisterAPIControllers(r chi.Router) {
 		// deprecated, discard/remove on next version
 		r.Post(endpoint+"/senddocument", SendDocumentAPIHandlerV2)
 
-		r.Post(endpoint+"/sendurl", SendDocumentFromUrl)
+		r.Post(endpoint+"/sendurl", SendAnyFromUrl)
 		r.Post(endpoint+"/sendbinary/{chatid}/{filename}/{text}", SendDocumentFromBinary)
 		r.Post(endpoint+"/sendbinary/{chatid}/{filename}", SendDocumentFromBinary)
 		r.Post(endpoint+"/sendbinary/{chatid}", SendDocumentFromBinary)
@@ -96,7 +99,7 @@ func RegisterAPIControllers(r chi.Router) {
 }
 
 func ScannerController(w http.ResponseWriter, r *http.Request) {
-	// setting default reponse type as json
+	// setting default response type as json
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &models.QpResponse{}
@@ -110,6 +113,7 @@ func ScannerController(w http.ResponseWriter, r *http.Request) {
 
 	user, err := GetUser(r)
 	if err != nil {
+		err := fmt.Errorf("user not found: %s", err.Error())
 		response.ParseError(err)
 		RespondInterface(w, response)
 		return
@@ -118,6 +122,7 @@ func ScannerController(w http.ResponseWriter, r *http.Request) {
 	pairing := &models.QpWhatsappPairing{Token: token, User: user}
 	con, err := pairing.GetConnection()
 	if err != nil {
+		err := fmt.Errorf("cant get connection: %s", err.Error())
 		response.ParseError(err)
 		RespondInterface(w, response)
 		return
@@ -129,6 +134,7 @@ func ScannerController(w http.ResponseWriter, r *http.Request) {
 	var png []byte
 	png, err = qrcode.Encode(result, qrcode.Medium, 256)
 	if err != nil {
+		err := fmt.Errorf("cant get qrcode: %s", err.Error())
 		response.ParseError(err)
 		RespondInterface(w, response)
 		return
@@ -141,7 +147,7 @@ func ScannerController(w http.ResponseWriter, r *http.Request) {
 }
 
 func CommandController(w http.ResponseWriter, r *http.Request) {
-	// setting default reponse type as json
+	// setting default response type as json
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &models.QpResponse{}
@@ -174,13 +180,31 @@ func CommandController(w http.ResponseWriter, r *http.Request) {
 		status := server.GetStatus()
 		response.ParseSuccess(status.String())
 	case "groups":
-		handle, err := server.ToggleGroups()
+		err := models.ToggleGroups(server)
 		if err == nil {
-			message := "groups toggled: " + strconv.FormatBool(handle)
+			message := "groups toggled: " + server.Groups.String()
+			response.ParseSuccess(message)
+		}
+	case "broadcasts":
+		err := models.ToggleBroadcasts(server)
+		if err == nil {
+			message := "broadcasts toggled: " + server.Broadcasts.String()
+			response.ParseSuccess(message)
+		}
+	case "readreceipts":
+		err := models.ToggleReadReceipts(server)
+		if err == nil {
+			message := "readreceipts toggled: " + server.ReadReceipts.String()
+			response.ParseSuccess(message)
+		}
+	case "calls":
+		err := models.ToggleCalls(server)
+		if err == nil {
+			message := "calls toggled: " + server.Calls.String()
 			response.ParseSuccess(message)
 		}
 	default:
-		err = fmt.Errorf("invalid action: {%s}, try {start,stop,restart,status,groups} !", action)
+		err = fmt.Errorf("invalid action: {%s}, try {start,stop,restart,status,groups}", action)
 	}
 
 	if err != nil {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var AllowedSuffix = map[string]bool{
@@ -85,34 +87,57 @@ func IsValidE164(phone string) bool {
 	return false
 }
 
-// Returns message type by attachment mime information
-func GetMessageType(Mimetype string) WhatsappMessageType {
-
-	// usado pela API para garantir o envio como documento de qualquer anexo
-	if strings.Contains(Mimetype, "wa-document") {
-		return DocumentMessageType
+func GetMessageType(attach *WhatsappAttachment) WhatsappMessageType {
+	if attach == nil {
+		return TextMessageType
 	}
 
-	// apaga informações após o ;
-	// fica somente o mime mesmo
-	mimeOnly := strings.Split(Mimetype, ";")
-	switch mimeOnly[0] {
-	case "image/png", "image/jpeg":
-		return ImageMessageType
-	case
-		"audio/ogg", "application/ogg", "audio/oga", "audio/ogx",
-		"audio/x-mpeg-3", "audio/mpeg3", "audio/mpeg",
-		"audio/mp4", "audio/wav", "audio/wave", "audio/x-wav":
+	if attach.ptt {
 		return AudioMessageType
-	case "video/mp4":
-		return VideoMessageType
+	}
 
-	// dont needed, just set to near following
-	case "text/xml", "application/pdf":
-		return DocumentMessageType
-
-	default:
-		println("(" + Mimetype + ") mime: " + mimeOnly[0])
+	if strings.HasPrefix(attach.FileName, InvalidFilePrefix) {
 		return DocumentMessageType
 	}
+
+	return GetMessageTypeFromMIME(attach.Mimetype)
+}
+
+// Returns message type by attachment mime information
+func GetMessageTypeFromMIME(mime string) WhatsappMessageType {
+
+	// should force to send as document ?
+	if strings.Contains(mime, "wa-document") {
+		return DocumentMessageType
+	}
+
+	// switch for basic mime type, ignoring suffix
+	mimeOnly := strings.Split(mime, ";")[0]
+
+	for _, item := range WhatsappMIMEAudio {
+		if item == mimeOnly {
+			return AudioMessageType
+		}
+	}
+
+	for _, item := range WhatsappMIMEVideo {
+		if item == mimeOnly {
+			return VideoMessageType
+		}
+	}
+
+	for _, item := range WhatsappMIMEImage {
+		if item == mimeOnly {
+			return ImageMessageType
+		}
+	}
+
+	for _, item := range WhatsappMIMEDocument {
+		if item == mimeOnly {
+			return DocumentMessageType
+		}
+	}
+
+	log.Debugf("whatsapp extensions default, full mime: (" + mime + ") extract mime: " + mimeOnly)
+	return DocumentMessageType
 }

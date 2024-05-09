@@ -11,4 +11,14 @@ type IWhatsappHandlers interface {
 
 	// Event
 	LoggedOut(string)
+
+	GetLeadingMessage() *WhatsappMessage
+
+	GetMessage(id string) (WhatsappMessage, error)
+
+	OnConnected()
+
+	OnDisconnected()
+
+	IsInterfaceNil() bool
 }

@@ -1,10 +1,12 @@
 package models
 
 import (
+	"context"
+
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
 	library "github.com/nocodeleaks/quepasa/library"
 	whatsapp "github.com/nocodeleaks/quepasa/whatsapp"
+	log "github.com/sirupsen/logrus"
 )
 
 type QpWhatsappPairing struct {
@@ -12,25 +14,53 @@ type QpWhatsappPairing struct {
 	Token string `db:"token" json:"token" validate:"max=100"`
 
 	// Whatsapp session id
-	WId string `db:"wid" json:"wid" validate:"max=255"`
+	Wid string `db:"wid" json:"wid" validate:"max=255"`
 
 	User *QpUser `json:"user,omitempty"`
 
 	conn whatsapp.IWhatsappConnection `json:"-"`
 }
 
-func (source *QpWhatsappPairing) OnPaired(wid string) {
-	source.WId = wid
-
-	// updating token if from user
-	if source.User != nil {
-		source.Token = source.GetUserToken()
+func (source *QpWhatsappPairing) GetLogger() *log.Entry {
+	if source.conn != nil && !source.conn.IsInterfaceNil() {
+		return source.conn.GetLogger()
 	}
 
-	log.Infof("paired whatsapp section %s, for token %s", source.WId, source.Token)
+	logger := log.WithContext(context.Background())
+
+	if len(source.Token) > 0 {
+		logger = logger.WithField("token", source.Token)
+	}
+
+	if len(source.Wid) > 0 {
+		logger = logger.WithField("wid", source.Wid)
+	}
+
+	return logger
+}
+
+func (source *QpWhatsappPairing) OnPaired(wid string) {
+	source.Wid = wid
+
+	// if token was not setted
+	// remember that user may want a different section for the same whatsapp
+	if len(source.Token) == 0 {
+
+		// updating token if from user
+		if source.User != nil {
+			source.Token = source.GetUserToken()
+		}
+	}
+
+	if source.conn != nil {
+		source.conn.SetReconnect(true)
+	}
+
+	logentry := source.GetLogger()
+	logentry.Info("paired whatsapp section")
 	server, err := WhatsappService.AppendPaired(source)
 	if err != nil {
-		log.Errorf("paired error: %s", err.Error())
+		logentry.Errorf("paired error: %s", err.Error())
 		return
 	}
 
@@ -49,9 +79,12 @@ func (source *QpWhatsappPairing) GetConnection() (whatsapp.IWhatsappConnection, 
 	return source.conn, nil
 }
 
+// gets an existent token for same phone number and user, or create a new token
 func (source *QpWhatsappPairing) GetUserToken() string {
-	phone := library.GetPhoneByWId(source.WId)
-	log.Infof("wid to phone: %s", phone)
+	phone := library.GetPhoneByWId(source.Wid)
+
+	logentry := source.GetLogger()
+	logentry.Infof("wid to phone: %s", phone)
 
 	servers := WhatsappService.GetServersForUser(source.User.Username)
 	for _, item := range servers {

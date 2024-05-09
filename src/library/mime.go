@@ -7,7 +7,17 @@ package library
 	</summary>
 */
 var MIMEs = map[string]string{
+	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":       ".xlsx",
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
-	"video/mp4":  ".mp4",
-	"image/webp": ".webp",
+	"application/zip": ".zip",
+	"audio/mpeg":      ".mp3",
+	"audio/wave":      ".wav",
+	"audio/wav":       ".wav",
+	"audio/x-wav":     ".wav",
+	"image/jpeg":      ".jpeg",
+	"image/webp":      ".webp",
+	"text/csv":        ".csv",
+	"text/xml":        ".xml",
+	"text/plain":      ".txt",
+	"video/mp4":       ".mp4",
 }

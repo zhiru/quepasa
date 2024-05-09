@@ -14,17 +14,9 @@ import (
 	types "go.mau.fi/whatsmeow/types"
 )
 
-type WhatsmeowLogLevel string
-
-const (
-	DebugLevel WhatsmeowLogLevel = "DEBUG"
-	InfoLevel  WhatsmeowLogLevel = "INFO"
-	WarnLevel  WhatsmeowLogLevel = "WARN"
-	ErrorLevel WhatsmeowLogLevel = "ERROR"
-)
-
 func GetMediaTypeFromAttachment(source *whatsapp.WhatsappAttachment) whatsmeow.MediaType {
-	return GetMediaTypeFromString(source.Mimetype)
+	msgType := whatsapp.GetMessageType(source)
+	return GetMediaTypeFromWAMsgType(msgType)
 }
 
 // Traz o MediaType para download do whatsapp
@@ -41,12 +33,6 @@ func GetMediaTypeFromWAMsgType(msgType whatsapp.WhatsappMessageType) whatsmeow.M
 	}
 }
 
-// Traz o MediaType para download do whatsapp
-func GetMediaTypeFromString(Mimetype string) whatsmeow.MediaType {
-	msgType := whatsapp.GetMessageType(Mimetype)
-	return GetMediaTypeFromWAMsgType(msgType)
-}
-
 func ToWhatsmeowMessage(source whatsapp.IWhatsappMessage) (msg *waProto.Message, err error) {
 	messageText := source.GetText()
 
@@ -61,6 +47,16 @@ func ToWhatsmeowMessage(source whatsapp.IWhatsappMessage) (msg *waProto.Message,
 func NewWhatsmeowMessageAttachment(response whatsmeow.UploadResponse, waMsg whatsapp.WhatsappMessage, media whatsmeow.MediaType) (msg *waProto.Message) {
 	attach := waMsg.Attachment
 
+	var seconds *uint32
+	if attach.Seconds > 0 {
+		seconds = proto.Uint32(attach.Seconds)
+	}
+
+	var mimetype *string
+	if len(attach.Mimetype) > 0 {
+		mimetype = proto.String(attach.Mimetype)
+	}
+
 	switch media {
 	case whatsmeow.MediaImage:
 		internal := &waProto.ImageMessage{
@@ -71,12 +67,21 @@ func NewWhatsmeowMessageAttachment(response whatsmeow.UploadResponse, waMsg what
 			FileSha256:    response.FileSHA256,
 			FileLength:    proto.Uint64(response.FileLength),
 
-			Mimetype: proto.String(attach.Mimetype),
+			Mimetype: mimetype,
 			Caption:  proto.String(waMsg.Text),
 		}
 		msg = &waProto.Message{ImageMessage: internal}
 		return
 	case whatsmeow.MediaAudio:
+
+		var ptt *bool
+		if attach.IsValidPTT() {
+			ptt = proto.Bool(true)
+		} else if attach.IsPTTCompatible() { // trick to send audio as ptt, "technical resource"
+			ptt = proto.Bool(true)
+			mimetype = proto.String(whatsapp.WhatsappPTTMime)
+		}
+
 		internal := &waProto.AudioMessage{
 			Url:           proto.String(response.URL),
 			DirectPath:    proto.String(response.DirectPath),
@@ -84,9 +89,9 @@ func NewWhatsmeowMessageAttachment(response whatsmeow.UploadResponse, waMsg what
 			FileEncSha256: response.FileEncSHA256,
 			FileSha256:    response.FileSHA256,
 			FileLength:    proto.Uint64(response.FileLength),
-			Seconds:       proto.Uint32(attach.Seconds),
-			Mimetype:      proto.String(attach.Mimetype),
-			Ptt:           proto.Bool(ShouldUsePtt(attach.Mimetype)),
+			Seconds:       seconds,
+			Mimetype:      mimetype,
+			Ptt:           ptt,
 		}
 		msg = &waProto.Message{AudioMessage: internal}
 		return
@@ -98,8 +103,8 @@ func NewWhatsmeowMessageAttachment(response whatsmeow.UploadResponse, waMsg what
 			FileEncSha256: response.FileEncSHA256,
 			FileSha256:    response.FileSHA256,
 			FileLength:    proto.Uint64(response.FileLength),
-			Seconds:       proto.Uint32(attach.Seconds),
-			Mimetype:      proto.String(attach.Mimetype),
+			Seconds:       seconds,
+			Mimetype:      mimetype,
 			Caption:       proto.String(waMsg.Text),
 		}
 		msg = &waProto.Message{VideoMessage: internal}
@@ -113,7 +118,7 @@ func NewWhatsmeowMessageAttachment(response whatsmeow.UploadResponse, waMsg what
 			FileSha256:    response.FileSHA256,
 			FileLength:    proto.Uint64(response.FileLength),
 
-			Mimetype: proto.String(attach.Mimetype),
+			Mimetype: mimetype,
 			FileName: proto.String(attach.FileName),
 			Caption:  proto.String(waMsg.Text),
 		}
@@ -122,13 +127,8 @@ func NewWhatsmeowMessageAttachment(response whatsmeow.UploadResponse, waMsg what
 	}
 }
 
-// Use that to set if the message should be sent as PTT audio
-func ShouldUsePtt(Mimetype string) bool {
-	return strings.Contains(Mimetype, "ogg") && strings.Contains(Mimetype, "opus")
-}
-
 func GetStringFromBytes(bytes []byte) string {
-	if bytes != nil && len(bytes) > 0 {
+	if len(bytes) > 0 {
 		return base64.StdEncoding.EncodeToString(bytes)
 	}
 	return ""

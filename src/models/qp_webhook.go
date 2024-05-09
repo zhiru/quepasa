@@ -7,11 +7,15 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	whatsapp "github.com/nocodeleaks/quepasa/whatsapp"
+	log "github.com/sirupsen/logrus"
 )
 
 type QpWebhook struct {
+	// Optional whatsapp options
+	// ------------------------
+	whatsapp.WhatsappOptions
+
 	Url             string      `db:"url" json:"url,omitempty"`                         // destination
 	ForwardInternal bool        `db:"forwardinternal" json:"forwardinternal,omitempty"` // forward internal msg from api
 	TrackId         string      `db:"trackid" json:"trackid,omitempty"`                 // identifier of remote system to avoid loop
@@ -21,11 +25,45 @@ type QpWebhook struct {
 	Timestamp       *time.Time  `db:"timestamp" json:"timestamp,omitempty"`
 }
 
-// Payload to include extra content
-type QpWebhookPayload struct {
-	*whatsapp.WhatsappMessage
-	Extra interface{} `db:"extra" json:"extra,omitempty"` // extra info to append on payload
+//#region VIEWS TRICKS
+
+func (source QpWebhook) GetReadReceipts() bool {
+	return source.ReadReceipts.Boolean()
 }
+
+func (source QpWebhook) IsSetReadReceipts() bool {
+	return source.ReadReceipts != whatsapp.UnSetBooleanType
+}
+
+func (source QpWebhook) GetGroups() bool {
+	return source.Groups.Boolean()
+}
+
+func (source QpWebhook) IsSetGroups() bool {
+	return source.Groups != whatsapp.UnSetBooleanType
+}
+
+func (source QpWebhook) GetBroadcasts() bool {
+	return source.Broadcasts.Boolean()
+}
+
+func (source QpWebhook) IsSetBroadcasts() bool {
+	return source.Broadcasts != whatsapp.UnSetBooleanType
+}
+
+func (source QpWebhook) GetCalls() bool {
+	return source.Calls.Boolean()
+}
+
+func (source QpWebhook) IsSetCalls() bool {
+	return source.Calls != whatsapp.UnSetBooleanType
+}
+
+func (source QpWebhook) IsSetExtra() bool {
+	return source.Extra != nil
+}
+
+//#endregion
 
 var ErrInvalidResponse error = errors.New("the requested url do not return 200 status code")
 

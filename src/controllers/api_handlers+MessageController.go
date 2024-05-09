@@ -10,9 +10,46 @@ import (
 
 //region CONTROLLER - Message
 
+func GetMessageController(w http.ResponseWriter, r *http.Request) {
+
+	// setting default response type as json
+	w.Header().Set("Content-Type", "application/json")
+
+	response := &models.QpMessageResponse{}
+
+	server, err := GetServer(r)
+	if err != nil {
+		response.ParseError(err)
+		RespondInterface(w, response)
+		return
+	}
+
+	// Default parameters
+	messageid := GetMessageId(r)
+
+	if len(messageid) == 0 {
+		err = fmt.Errorf("empty message id")
+		response.ParseError(err)
+		RespondInterface(w, response)
+		return
+	} else {
+
+		msg, err := server.Handler.GetMessage(messageid)
+		if err != nil {
+			response.ParseError(err)
+			RespondInterface(w, response)
+			return
+		}
+
+		response.ParseSuccess("found")
+		response.Message = &msg
+		RespondSuccess(w, response)
+	}
+}
+
 func RevokeController(w http.ResponseWriter, r *http.Request) {
 
-	// setting default reponse type as json
+	// setting default response type as json
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &models.QpResponse{}
@@ -36,8 +73,11 @@ func RevokeController(w http.ResponseWriter, r *http.Request) {
 
 		if GetMessageIdAsPrefix(r) {
 			errs := server.RevokeByPrefix(messageid)
-			if errs != nil && len(errs) > 0 {
+			if len(errs) > 0 {
 				err = errors.Join(errs...)
+				response.ParseError(err)
+				RespondInterface(w, response)
+				return
 			}
 		} else {
 			err = server.Revoke(messageid)
@@ -51,7 +91,6 @@ func RevokeController(w http.ResponseWriter, r *http.Request) {
 		response.ParseSuccess("revoked with success")
 		RespondSuccess(w, response)
 	}
-	return
 }
 
 //endregion

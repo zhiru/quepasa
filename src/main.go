@@ -19,16 +19,19 @@ func main() {
 	// Carregando variaveis de ambiente apartir de arquivo .env
 	godotenv.Load()
 
-	if models.ENV.DEBUGJsonMessages() {
-		log.SetLevel(log.DebugLevel)
+	loglevel := models.ENV.LogLevel()
+
+	logruslevel, err := log.ParseLevel(loglevel)
+	if err != nil {
+		log.Errorf("trying parse an invalid loglevel: %s, current: %v", loglevel, log.GetLevel())
 	} else {
-		log.SetLevel(log.InfoLevel)
+		log.SetLevel(logruslevel)
 	}
 
-	// Verifica se é necessario realizar alguma migração de base de dados
-	err := models.MigrateToLatest()
+	// checks for pending database migrations
+	err = models.MigrateToLatest()
 	if err != nil {
-		log.Fatalf("Database migration error: %s", err.Error())
+		log.Fatalf("database migration error: %s", err.Error())
 	}
 
 	// should became before whatsmeow start
@@ -37,9 +40,23 @@ func main() {
 		whatsapp.WhatsappWebAppSystem = title
 	}
 
-	whatsmeow.WhatsmeowService.Start()
-	whatsmeow.WhatsmeowService.LogLevel = models.ENV.WhatsmeowLogLevel()
-	whatsmeow.WhatsmeowService.ReadReceipt = models.ENV.ShouldReadReceipts()
+	whatsapp.Options = whatsapp.WhatsappOptionsExtended{
+		Groups:       models.ENV.Groups(),
+		Broadcasts:   models.ENV.Broadcasts(),
+		ReadReceipts: models.ENV.ReadReceipts(),
+		Calls:        models.ENV.Calls(),
+		ReadUpdate:   models.ENV.ReadUpdate(),
+		HistorySync:  models.ENV.HistorySync(),
+		LogLevel:     loglevel,
+	}
+
+	options := whatsmeow.WhatsmeowOptions{
+		WhatsappOptionsExtended: whatsapp.Options,
+		WMLogLevel:              models.ENV.WhatsmeowLogLevel(),
+		DBLogLevel:              models.ENV.WhatsmeowDBLogLevel(),
+	}
+
+	whatsmeow.Start(options)
 
 	// must execute after whatsmeow started
 	for _, element := range models.Running {
@@ -52,9 +69,13 @@ func main() {
 	// De forma assíncrona
 	err = models.QPWhatsappStart()
 	if err != nil {
-		log.Fatalf("Whatsapp service starting error: %s", err.Error())
+		log.Fatalf("whatsapp service starting error: %s", err.Error())
 	}
 
-	controllers.QPWebServerStart()
-	log.Info("Ready !")
+	err = controllers.QPWebServerStart()
+	if err != nil {
+		log.Info("end with errors")
+	} else {
+		log.Info("end")
+	}
 }

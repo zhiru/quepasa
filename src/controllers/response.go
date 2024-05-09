@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	models "github.com/nocodeleaks/quepasa/models"
+	log "github.com/sirupsen/logrus"
 )
 
 type errorResponse struct {
@@ -28,24 +28,25 @@ func RespondNoContent(w http.ResponseWriter, err error) {
 	RespondErrorCode(w, err, http.StatusNoContent)
 }
 
-/// Usado para avisar que o bot ainda não esta pronto
+// / Usado para avisar que o bot ainda não esta pronto
 func RespondNotReady(w http.ResponseWriter, err error) {
 	RespondErrorCode(w, err, http.StatusServiceUnavailable)
 }
 
 func RespondServerError(server *models.QpWhatsappServer, w http.ResponseWriter, err error) {
-	if strings.Contains(err.Error(), "invalid websocket") {
+	RespondErrorCode(w, err, http.StatusInternalServerError)
+	if server == nil {
+		return
+	}
 
-		// Desconexão forçado é algum evento iniciado pelo whatsapp
-		log.Errorf("(%s) Desconexão forçada por motivo de websocket inválido ou sem resposta", server.Token)
+	logentry := server.GetLogger()
+	if strings.Contains(err.Error(), "invalid websocket") {
+		logentry.Error("forced disconnected by any reason of invalid websocket or no response")
 		go server.Restart()
 
 	} else {
-		if models.ENV.DEBUGRequests() {
-			log.Errorf("(%s) !Request Server error: %s", server.Token, err)
-		}
+		logentry.Errorf("request server error: %s", err.Error())
 	}
-	RespondErrorCode(w, err, http.StatusInternalServerError)
 }
 
 func RespondErrorCode(w http.ResponseWriter, err error, code int) {
@@ -60,14 +61,16 @@ func RespondErrorCode(w http.ResponseWriter, err error, code int) {
 
 /*
 <summary>
+
 	Default response method
 	Used in v3 *models.QpResponse
 	Returns OK | Bad Request
+
 </summary>
 */
 func RespondInterfaceCode(w http.ResponseWriter, response interface{}, code uint) {
 
-	// setting default reponse type as json
+	// setting default response type as json
 	w.Header().Set("Content-Type", "application/json")
 
 	// Writing header code

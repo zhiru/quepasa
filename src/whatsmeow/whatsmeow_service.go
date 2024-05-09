@@ -8,6 +8,8 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	log "github.com/sirupsen/logrus"
+	waProto "go.mau.fi/whatsmeow/binary/proto"
+	"google.golang.org/protobuf/proto"
 
 	library "github.com/nocodeleaks/quepasa/library"
 	whatsapp "github.com/nocodeleaks/quepasa/whatsapp"
@@ -18,81 +20,126 @@ import (
 )
 
 type WhatsmeowServiceModel struct {
-	Container   *sqlstore.Container
-	ReadReceipt bool
-	LogLevel    string
+	Container *sqlstore.Container
+	Options   WhatsmeowOptions
+
+	LogEntry *log.Entry `json:"-"` // log entry
 }
 
 var WhatsmeowService *WhatsmeowServiceModel
 
-func (service *WhatsmeowServiceModel) Start() {
-	if service == nil {
-		log.Info("Starting Whatsmeow Service ....")
-
-		dbLog := waLog.Stdout("whatsmeow/database", string(WarnLevel), true)
-
-		// check if exists old whatsmeow.db
-		var cs string
-		if _, err := os.Stat("whatsmeow.db"); err == nil {
-			cs = "file:whatsmeow.db?_foreign_keys=on"
-		} else {
-			// using new quepasa.sqlite
-			cs = "file:whatsmeow.sqlite?_foreign_keys=on"
-		}
-
-		container, err := sqlstore.New("sqlite3", cs, dbLog)
-		if err != nil {
-			panic(err)
-		}
-
-		WhatsmeowService = &WhatsmeowServiceModel{Container: container}
-
-		showing := whatsapp.WhatsappWebAppName
-
-		// trim spaces from app name previous setted, if exists
-		previousShowing := strings.TrimSpace(whatsapp.WhatsappWebAppSystem)
-		if len(previousShowing) > 0 {
-			// using previous setted name
-			showing = previousShowing
-		}
-
-		var version [3]uint32
-		version[0] = 0
-		version[1] = 9
-		version[2] = 0
-		store.SetOSInfo(showing, version)
+func Start(options WhatsmeowOptions) {
+	if WhatsmeowService != nil {
+		err := fmt.Errorf("whatsmeow service is already started, if you wanna change options, restart the service")
+		panic(err)
 	}
+
+	logger := log.New()
+	loglevel, err := log.ParseLevel(options.LogLevel)
+	if err == nil {
+		logger.SetLevel(loglevel)
+	} else {
+		logger.SetLevel(WhatsmeowLogLevel)
+	}
+
+	logentry := logger.WithContext(context.Background())
+	logentry.Info("Starting Whatsmeow Service ....")
+
+	dbloglevel := WhatsmeowDBLogLevel
+	if len(options.DBLogLevel) > 0 {
+		dbloglevel = options.DBLogLevel
+	}
+	dbLog := waLog.Stdout("whatsmeow/database", dbloglevel, true)
+
+	// check if exists old whatsmeow.db
+	var cs string
+	if _, err := os.Stat("whatsmeow.db"); err == nil {
+		cs = "file:whatsmeow.db?_foreign_keys=on"
+	} else {
+		// using new quepasa.sqlite
+		cs = "file:whatsmeow.sqlite?_foreign_keys=on"
+	}
+
+	container, err := sqlstore.New("sqlite3", cs, dbLog)
+	if err != nil {
+		panic(err)
+	}
+
+	WhatsmeowService = &WhatsmeowServiceModel{
+		Container: container,
+		Options:   options,
+
+		LogEntry: logentry,
+	}
+
+	showing := whatsapp.WhatsappWebAppName
+
+	// trim spaces from app name previous setted, if exists
+	previousShowing := strings.TrimSpace(whatsapp.WhatsappWebAppSystem)
+	if len(previousShowing) > 0 {
+		// using previous setted name
+		showing = previousShowing
+	}
+
+	var version [3]uint32
+	version[0] = 0
+	version[1] = 9
+	version[2] = 0
+	store.SetOSInfo(showing, version)
+
+	historysync := WhatsmeowService.GetHistorySync()
+	if historysync != nil {
+		logentry.Infof("Setting history sync to %v days", *historysync)
+		store.DeviceProps.RequireFullSync = proto.Bool(true)
+
+		if *historysync == 0 {
+			store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
+				FullSyncDaysLimit: proto.Uint32(3650),
+			}
+		} else {
+			store.DeviceProps.HistorySyncConfig = &waProto.DeviceProps_HistorySyncConfig{
+				FullSyncDaysLimit: historysync,
+			}
+		}
+
+		store.DeviceProps.HistorySyncConfig.FullSyncSizeMbLimit = proto.Uint32(102400)
+		store.DeviceProps.HistorySyncConfig.StorageQuotaMb = proto.Uint32(102400)
+	}
+}
+
+func (source WhatsmeowServiceModel) GetServiceOptions() whatsapp.WhatsappOptionsExtended {
+	return source.Options.WhatsappOptionsExtended
+}
+
+func (source *WhatsmeowServiceModel) GetHistorySync() *uint32 {
+	return source.Options.HistorySync
 }
 
 // Used for scan QR Codes
 // Dont forget to attach handlers after success login
-func (service *WhatsmeowServiceModel) CreateEmptyConnection() (conn *WhatsmeowConnection, err error) {
-	logger := log.StandardLogger()
-	logger.SetLevel(log.DebugLevel)
-
-	return service.CreateConnection("", logger.WithContext(context.Background()))
+func (source *WhatsmeowServiceModel) CreateEmptyConnection() (conn *WhatsmeowConnection, err error) {
+	options := &whatsapp.WhatsappConnectionOptions{
+		Reconnect: false,
+	}
+	return source.CreateConnection(options)
 }
 
-func (service *WhatsmeowServiceModel) CreateConnection(wid string, loggerEntry *log.Entry) (conn *WhatsmeowConnection, err error) {
-	loglevel := loggerEntry.Level.String()
-	if len(service.LogLevel) > 0 {
-		loglevel = service.LogLevel
-	}
-
-	clientLog := waLog.Stdout("whatsmeow/client", loglevel, true)
-	client, err := service.GetWhatsAppClient(wid, clientLog)
+func (source *WhatsmeowServiceModel) CreateConnection(options *whatsapp.WhatsappConnectionOptions) (conn *WhatsmeowConnection, err error) {
+	client, err := source.GetWhatsAppClient(options)
 	if err != nil {
 		return
 	}
 
-	if len(wid) > 0 {
-		loggerEntry = loggerEntry.WithField("wid", wid)
-	}
+	logentry := options.GetLogger()
+	client.EnableAutoReconnect = options.GetReconnect()
 
 	handlers := &WhatsmeowHandlers{
-		Client:      client,
-		log:         loggerEntry,
-		ReadReceipt: service.ReadReceipt,
+		WhatsappOptions:  options.WhatsappOptions,
+		WhatsmeowOptions: source.Options,
+		Client:           client,
+		service:          source,
+
+		LogEntry: logentry,
 	}
 
 	err = handlers.Register()
@@ -103,21 +150,22 @@ func (service *WhatsmeowServiceModel) CreateConnection(wid string, loggerEntry *
 	conn = &WhatsmeowConnection{
 		Client:   client,
 		Handlers: handlers,
-		waLogger: clientLog,
-		log:      loggerEntry,
+
+		LogEntry: logentry,
 	}
 
 	client.PrePairCallback = conn.PairedCallBack
 	return
 }
 
-func (service *WhatsmeowServiceModel) GetStoreFromWid(wid string) (str *store.Device, err error) {
+// Gets an existing store or create a new one for empty wid
+func (service *WhatsmeowServiceModel) GetOrCreateStore(wid string) (str *store.Device, err error) {
 	if wid == "" {
 		str = service.Container.NewDevice()
 	} else {
 		devices, err := service.Container.GetAllDevices()
 		if err != nil {
-			err = fmt.Errorf("(Whatsmeow)(EX001) error on getting store from wid (%s): %v", wid, err)
+			err = fmt.Errorf("{Whatsmeow}{EX001} error on getting store from wid {%s}: %v", wid, err)
 			return str, err
 		} else {
 			for _, element := range devices {
@@ -137,12 +185,12 @@ func (service *WhatsmeowServiceModel) GetStoreFromWid(wid string) (str *store.De
 	return
 }
 
-// Temporaly
+// Temporary
 func (service *WhatsmeowServiceModel) GetStoreForMigrated(phone string) (str *store.Device, err error) {
 
 	devices, err := service.Container.GetAllDevices()
 	if err != nil {
-		err = fmt.Errorf("(Whatsmeow)(EX001) error on getting store from phone (%s): %v", phone, err)
+		err = fmt.Errorf("{Whatsmeow}{EX001} error on getting store from phone {%s}: %v", phone, err)
 		return str, err
 	} else {
 		for _, element := range devices {
@@ -161,12 +209,24 @@ func (service *WhatsmeowServiceModel) GetStoreForMigrated(phone string) (str *st
 	return
 }
 
-func (service *WhatsmeowServiceModel) GetWhatsAppClient(wid string, logger waLog.Logger) (client *whatsmeow.Client, err error) {
-	deviceStore, err := service.GetStoreFromWid(wid)
+func (source *WhatsmeowServiceModel) GetWhatsAppClient(options whatsapp.IWhatsappConnectionOptions) (client *whatsmeow.Client, err error) {
+	loglevel := WhatsmeowClientLogLevel
+	_, logerr := log.ParseLevel(source.Options.WMLogLevel)
+	if logerr == nil {
+		loglevel = source.Options.WMLogLevel
+	}
+
+	wid := options.GetWid()
+	clientLog := waLog.Stdout("whatsmeow/client", loglevel, true)
+	if len(wid) > 0 {
+		clientLog = clientLog.Sub(wid)
+	}
+
+	deviceStore, err := source.GetOrCreateStore(wid)
 	if deviceStore != nil {
-		client = whatsmeow.NewClient(deviceStore, logger)
+		client = whatsmeow.NewClient(deviceStore, clientLog)
 		client.AutoTrustIdentity = true
-		client.EnableAutoReconnect = true
+		client.EnableAutoReconnect = options.GetReconnect()
 	}
 	return
 }

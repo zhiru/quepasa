@@ -4,7 +4,7 @@
     {
       "parameters": {
         "baseUrl": "={{$json[\"extra\"][\"cwhost\"]}}",
-        "accessToken": "={{$json[\"extra\"][\"utoken\"]}}",
+        "accessToken": "={{ $json.extra.utoken }}",
         "resource": "contact",
         "accountId": "={{$json[\"extra\"][\"account\"]}}",
         "sourceId": "={{$json[\"chat\"][\"hex\"]}}",
@@ -49,7 +49,7 @@
       "typeVersion": 1,
       "position": [
         1040,
-        -240
+        -220
       ]
     },
     {
@@ -62,7 +62,7 @@
       "typeVersion": 1,
       "position": [
         1240,
-        -240
+        -220
       ]
     },
     {
@@ -72,7 +72,7 @@
           "string": [
             {
               "name": "extra",
-              "value": "={{$json.body.extra}}"
+              "value": "={{$json.extra ?? $json.body.extra}}"
             },
             {
               "name": "chat",
@@ -105,9 +105,7 @@
             {
               "name": "attachment",
               "value": "={{$json.body.attachment}}"
-            }
-          ],
-          "number": [
+            },
             {
               "name": "type",
               "value": "={{$json.body.type}}"
@@ -127,7 +125,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        840,
+        680,
         -320
       ]
     },
@@ -206,6 +204,10 @@
             {
               "value1": "={{$json.payload}}",
               "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.error}}",
+              "operation": "isEmpty"
             }
           ]
         }
@@ -329,6 +331,12 @@
               "name": "attempts",
               "value": "={{ ($json.attempts ?? 0) + 1 }}"
             }
+          ],
+          "string": [
+            {
+              "name": "error",
+              "value": "={{ undefined }}"
+            }
           ]
         },
         "options": {}
@@ -392,11 +400,7 @@
     },
     {
       "parameters": {
-<<<<<<< HEAD
-        "content": "## (1.0.4) Updates\n* limit and phone validator\n\n## Recommendations \n* Remember set timeout to 20 seconds",
-=======
-        "content": "## (1.0.5) Updates\n* synopsis\n\n## Recommendations \n* Remember set timeout to 20 seconds",
->>>>>>> other-repo/main
+        "content": "## (1.0.10) Updates\n* type number to text\n\n## Recommendations \n* Remember set timeout to 20 seconds",
         "height": 201.45401153644474,
         "width": 467.54452018877896
       },
@@ -405,8 +409,8 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        640,
-        -580
+        460,
+        -560
       ]
     },
     {
@@ -416,7 +420,7 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        660,
+        520,
         -320
       ]
     },
@@ -482,7 +486,7 @@
             {
               "value1": "={{ $json.error ?? \"\" }}",
               "operation": "contains",
-              "value2": "could not be processed"
+              "value2": "process"
             }
           ],
           "number": [
@@ -635,6 +639,31 @@
         2420,
         -220
       ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "extra.qphost",
+              "value": "={{ $json.extra.qphost ?? \"http://127.0.0.1:31000\" }}"
+            },
+            {
+              "name": "extra.cwhost",
+              "value": "={{ $json.extra.cwhost ?? \"http://127.0.0.1:3000\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a280c016-e515-4e00-af76-4a1bc196c6e4",
+      "name": "Defaults",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        840,
+        -320
+      ]
     }
   ],
   "pinData": {},
@@ -676,12 +705,7 @@
       "main": [
         [
           {
-            "node": "Clearing Payload For Contacts",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Parameters + Contacts",
+            "node": "Defaults",
             "type": "main",
             "index": 0
           }
@@ -975,6 +999,22 @@
           }
         ]
       ]
+    },
+    "Defaults": {
+      "main": [
+        [
+          {
+            "node": "Parameters + Contacts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Clearing Payload For Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -983,18 +1023,12 @@
     "callerPolicy": "workflowsFromSameOwner",
     "executionTimeout": 30
   },
-<<<<<<< HEAD
-  "versionId": "dcb14ac4-d7e4-4f20-880d-14b5dc70c415",
-=======
-  "versionId": "77f11969-cc19-4e4b-a281-31c6407aad24",
->>>>>>> other-repo/main
-  "id": "1002",
+  "versionId": "de135da2-ba1e-4971-91d6-3b578101d46b",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "2b4ab318d4f8eba20155e50db9998481bc305e3588e42ee69176091736c9d07e"
   },
-<<<<<<< HEAD
-  "tags": []
-=======
+  "id": "1002",
   "tags": [
     {
       "createdAt": "2022-10-13T15:26:19.857Z",

@@ -90,7 +90,7 @@ func SendAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 
 	// setting source msg participant
 	if waMsg.FromGroup() && len(waMsg.Participant.Id) == 0 {
-		waMsg.Participant.Id = server.WId
+		waMsg.Participant.Id = server.Wid
 	}
 
 	// setting wa msg chat title
@@ -109,13 +109,13 @@ func SendAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 	response.Chat.ID = waMsg.Chat.Id
 	response.Chat.UserName = waMsg.Chat.Id
 	response.Chat.Title = waMsg.Chat.Title
-	response.From.ID = server.WId
+	response.From.ID = server.Wid
 	response.From.UserName = server.GetNumber()
 	response.ID = sendResponse.GetId()
 
 	// Para manter a compatibilidade
 	response.PreviusV1 = models.QPSendResult{
-		Source:    server.GetWid(),
+		Source:    server.GetWId(),
 		Recipient: waMsg.Chat.Id,
 		MessageId: sendResponse.GetId(),
 	}
@@ -143,7 +143,7 @@ func ReceiveAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 	status := server.GetStatus()
 	if status != whatsapp.Ready {
 		metrics.MessageReceiveErrors.Inc()
-		err = &ApiServerNotReadyException{Wid: server.WId, Status: status}
+		err = &ApiServerNotReadyException{Wid: server.Wid, Status: status}
 		response.ParseError(err)
 		RespondInterface(w, response)
 		return
@@ -186,31 +186,33 @@ func SendDocumentAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Declare a new Person struct.
-	var request models.QPSendDocumentRequestV2
+	var requestV2 models.QPSendDocumentRequestV2
 
 	// Try to decode the request body into the struct. If there is an error,
 	// respond to the client with the error message and a 400 status code.
-	err = json.NewDecoder(r.Body).Decode(&request)
+	err = json.NewDecoder(r.Body).Decode(&requestV2)
 	if err != nil {
 		metrics.MessageSendErrors.Inc()
 		RespondServerError(server, w, err)
 		return
 	}
 
-	if request.Attachment == (models.QPAttachmentV1{}) {
+	if requestV2.Attachment == (models.QPAttachmentV1{}) {
 		metrics.MessageSendErrors.Inc()
 		RespondServerError(server, w, fmt.Errorf("attachment not found"))
 		return
 	}
 
-	trackid := GetTrackId(r)
-	waMsg, err := whatsapp.ToMessage(request.Recipient, request.Message, trackid)
+	request := requestV2.ToQpSendRequest()
+	request.TrackId = GetTrackId(r)
+
+	waMsg, err := request.ToWhatsappMessage()
 	if err != nil {
 		metrics.MessageSendErrors.Inc()
 		return
 	}
 
-	attach, err := models.ToWhatsappAttachment(&request.Attachment)
+	attach, err := request.ToWhatsappAttachment()
 	if err != nil {
 		metrics.MessageSendErrors.Inc()
 		RespondServerError(server, w, err)
@@ -218,7 +220,7 @@ func SendDocumentAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 	}
 
 	waMsg.Attachment = attach
-	waMsg.Type = whatsapp.GetMessageType(attach.Mimetype)
+	waMsg.Type = whatsapp.GetMessageType(attach)
 
 	sendResponse, err := server.SendMessage(waMsg)
 	if err != nil {
@@ -231,13 +233,13 @@ func SendDocumentAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 	response.Chat.ID = waMsg.Chat.Id
 	response.Chat.UserName = waMsg.Chat.Id
 	response.Chat.Title = server.GetChatTitle(waMsg.Chat.Id)
-	response.From.ID = server.WId
+	response.From.ID = server.Wid
 	response.From.UserName = server.GetNumber()
 	response.ID = sendResponse.GetId()
 
 	// Para manter a compatibilidade
 	response.PreviusV1 = models.QPSendResult{
-		Source:    server.GetWid(),
+		Source:    server.GetWId(),
 		Recipient: waMsg.Chat.Id,
 		MessageId: sendResponse.GetId(),
 	}
@@ -258,7 +260,7 @@ func AttachmentAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 	// Checking for ready state
 	status := server.GetStatus()
 	if status != whatsapp.Ready {
-		RespondNotReady(w, &ApiServerNotReadyException{Wid: server.GetWid(), Status: status})
+		RespondNotReady(w, &ApiServerNotReadyException{Wid: server.GetWId(), Status: status})
 		return
 	}
 
@@ -295,7 +297,7 @@ func AttachmentAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 
 func WebHookAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 
-	// setting default reponse type as json
+	// setting default response type as json
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &models.QpWebhookResponse{}
@@ -306,6 +308,8 @@ func WebHookAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 		RespondInterface(w, response)
 		return
 	}
+
+	logger := server.GetLogger()
 
 	// reading body to avoid converting to json if empty
 	body, err := ioutil.ReadAll(r.Body)
@@ -338,7 +342,7 @@ func WebHookAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 
 	switch os := r.Method; os {
 	case http.MethodPost:
-		affected, err := server.WebhookAdd(webhook)
+		affected, err := server.WebhookAddOrUpdate(webhook)
 		if err != nil {
 			response.ParseError(err)
 			RespondInterface(w, response)
@@ -347,7 +351,7 @@ func WebHookAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 			response.ParseSuccess("updated with success")
 			RespondSuccess(w, response)
 			if affected > 0 {
-				server.Log.Infof("updating webhook url: %s, items affected: %v", webhook.Url, affected)
+				logger.Infof("updating webhook url: %s, items affected: %v", webhook.Url, affected)
 			}
 		}
 		return
@@ -361,13 +365,13 @@ func WebHookAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 			response.ParseSuccess("deleted with success")
 			RespondSuccess(w, response)
 			if affected > 0 {
-				server.Log.Infof("removing webhook url: %s, items affected: %v", webhook.Url, affected)
+				logger.Infof("removing webhook url: %s, items affected: %v", webhook.Url, affected)
 			}
 		}
 		return
 	default:
 		url := r.Header.Get("X-QUEPASA-WHURL")
-		response.Webhooks = filterByUrlV2(server.Webhooks, url)
+		response.Webhooks = server.GetWebHooksByUrl(url)
 		if len(url) > 0 {
 			response.ParseSuccess(fmt.Sprintf("getting with filter: %s", url))
 		} else {
@@ -377,13 +381,4 @@ func WebHookAPIHandlerV2(w http.ResponseWriter, r *http.Request) {
 		RespondSuccess(w, response)
 		return
 	}
-}
-
-func filterByUrlV2(source []*models.QpWebhook, filter string) (out []models.QpWebhook) {
-	for _, element := range source {
-		if strings.Contains(element.Url, filter) {
-			out = append(out, *element)
-		}
-	}
-	return
 }

@@ -33,40 +33,67 @@ func GetTypeString(myvar interface{}) string {
 	}
 }
 
-func GetMimeTypeFromContent(content []byte, filename string) string {
+func GetMimeTypeFromContent(content []byte) string {
 	mimeType := http.DetectContentType(content)
-	if mimeType == "application/octet-stream" && len(filename) > 0 {
-		extension := filepath.Ext(filename)
-		newMimeType := mime.TypeByExtension(extension)
-		if len(newMimeType) > 0 {
-			mimeType = newMimeType
-		}
+	if len(mimeType) > 0 && mimeType != "application/octet-stream" && mimeType != "application/zip" {
+		log.Tracef("utils - detected mime type from content: %s", mimeType)
+		return mimeType
 	}
-	return mimeType
+	return ""
 }
 
-func GenerateFileNameFromMimeType(mimeType string) string {
+// used by send attachment via url
+// 2024/04/10 changed priority by extension, then content.
+func GetMimeTypeFromContentAndExtension(content []byte, filename string) string {
 
-	const layout = "20060201150405"
-	t := time.Now().UTC()
-	filename := "file-" + t.Format(layout)
-
-	// get file extension from mime type
-	extension, _ := mime.ExtensionsByType(mimeType)
-	if len(extension) > 0 {
-		filename = filename + extension[0]
+	mimeType := http.DetectContentType(content)
+	if len(mimeType) > 0 && mimeType != "application/octet-stream" && mimeType != "application/zip" {
+		log.Tracef("utils - detected mime type from content: %s", mimeType)
+		return mimeType
 	}
 
-	return filename
+	if len(filename) > 0 {
+		extension := filepath.Ext(filename)
+
+		// checking for static manual mime maps
+		for key, value := range MIMEs {
+			if value == extension {
+				log.Tracef("utils - detected mime type from static maps: %s", key)
+				return key
+			}
+		}
+
+		newMimeType := mime.TypeByExtension(extension)
+		log.Tracef("utils - detected mime type from extension: %s, filename: %s, mime: %s", extension, filename, newMimeType)
+
+		if len(newMimeType) > 0 {
+			return newMimeType
+		}
+	}
+
+	return mimeType
 }
 
 // Get the first discovered extension from a given mime type (with dot = {.ext})
 func TryGetExtensionFromMimeType(mimeType string) (exten string, success bool) {
-	if exten, success = MIMEs[mimeType]; success {
+
+	// lowering
+	normalized := strings.ToLower(mimeType)
+
+	// removing everything after ;
+	if strings.Contains(normalized, ";") {
+		normalized = strings.Split(normalized, ";")[0]
+	}
+
+	// removing white spaces
+	normalized = strings.TrimSpace(normalized)
+
+	// looking for at static mappings
+	if exten, success = MIMEs[normalized]; success {
 		return exten, true
 	}
 
-	extensions, err := mime.ExtensionsByType(mimeType)
+	extensions, err := mime.ExtensionsByType(normalized)
 	if err != nil {
 		log.Errorf("error getting internal mime for: %s, %s", mimeType, err.Error())
 		return exten, false
@@ -81,6 +108,21 @@ func TryGetExtensionFromMimeType(mimeType string) (exten string, success bool) {
 	} else {
 		return exten, false
 	}
+}
+
+func GenerateFileNameFromMimeType(mimeType string) string {
+
+	const layout = "20060201150405"
+	t := time.Now().UTC()
+	filename := "file-" + t.Format(layout)
+
+	// get file extension from mime type
+	extension, _ := TryGetExtensionFromMimeType(mimeType)
+	if len(extension) > 0 {
+		filename = filename + extension
+	}
+
+	return filename
 }
 
 // Usado também para identificar o número do bot
@@ -119,7 +161,7 @@ func ExtractPhoneIfValid(source string) (phone string, err error) {
 		response = strings.Split(response, "@")[0]
 	}
 
-	r, _ := regexp.Compile("^[1-9]\\d{6,14}$")
+	r, _ := regexp.Compile(`^[1-9]\d{6,14}$`)
 	if r.MatchString(response) {
 		phone = "+" + response
 	} else {
@@ -133,7 +175,7 @@ func RemoveDigit9IfElegible(source string) (response string, err error) {
 	if len(source) == 14 {
 
 		// mobile phones with 9 digit
-		r, _ := regexp.Compile("\\+55([4-9][1-9]|[3-9][1-9])9\\d{8}$")
+		r, _ := regexp.Compile(`\+55([4-9][1-9]|[3-9][1-9])9\d{8}$`)
 		if r.MatchString(source) {
 			prefix := source[0:5]
 			response = prefix + source[6:14]

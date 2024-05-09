@@ -3,7 +3,6 @@ package models
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -76,17 +75,17 @@ func GetDatabase() *QpDatabase {
 func GetDBConfig() QpDatabaseConfig {
 	config := QpDatabaseConfig{}
 
-	config.Driver = os.Getenv("DBDRIVER")
+	config.Driver = os.Getenv(ENV_DBDRIVER)
 	if len(config.Driver) == 0 {
 		config.Driver = "sqlite3"
 	}
 
-	config.Host = os.Getenv("DBHOST")
-	config.DataBase = os.Getenv("DBDATABASE")
-	config.Port = os.Getenv("DBPORT")
-	config.User = os.Getenv("DBUSER")
-	config.Password = os.Getenv("DBPASSWORD")
-	config.SSL = os.Getenv("DBSSLMODE")
+	config.Host = os.Getenv(ENV_DBHOST)
+	config.DataBase = os.Getenv(ENV_DBDATABASE)
+	config.Port = os.Getenv(ENV_DBPORT)
+	config.User = os.Getenv(ENV_DBUSER)
+	config.Password = os.Getenv(ENV_DBPASSWORD)
+	config.SSL = os.Getenv(ENV_DBSSLMODE)
 	return config
 }
 
@@ -119,7 +118,7 @@ func MigrateToLatest() (err error) {
 		}
 	}
 
-	log.Debugf("fullpath database: %s", fullPath)
+	log.Debugf("full path database: %s", fullPath)
 
 	migrations := Migrations(fullPath)
 	config := GetDBConfig()
@@ -136,7 +135,7 @@ func MigrateToLatest() (err error) {
 
 func Migrations(fullPath string) (migrations []migrate.SqlxMigration) {
 	log.Debugf("migrating files from: %s", fullPath)
-	files, err := ioutil.ReadDir(fullPath)
+	files, err := os.ReadDir(fullPath)
 	if err != nil {
 		if strings.Contains(err.Error(), "cannot find the file specified") {
 			log.Warnf("no migrations found at: %s", fullPath)
@@ -202,17 +201,22 @@ func GetBase() migrate.SqlxMigration {
 		"wid" VARCHAR (255) UNIQUE NOT NULL,
 		"verified" BOOLEAN NOT NULL DEFAULT FALSE,
 		"devel" BOOLEAN NOT NULL DEFAULT FALSE,
-		"handlegroups" BOOLEAN NOT NULL DEFAULT TRUE,
-		"handlebroadcast" BOOLEAN NOT NULL DEFAULT FALSE,
-		"user" CHAR (36) DEFAULT NULL REFERENCES "users"("username"),
+		"groups" INT(1) NOT NULL DEFAULT 0,
+  		"broadcasts" INT(1) NOT NULL DEFAULT 0,
+  		"readreceipts" INT(1) NOT NULL DEFAULT 0,
+  		"calls" INT(1) NOT NULL DEFAULT 0,
+		"user" CHAR (255) DEFAULT NULL REFERENCES "users"("username"),
 		"timestamp" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	  );
 	  
 	  CREATE TABLE IF NOT EXISTS "webhooks" (
-		"context" CHAR (255) NOT NULL REFERENCES "servers"("token"),
+		"context" CHAR (100) NOT NULL REFERENCES "servers"("token"),
 		"url" VARCHAR (255) NOT NULL,
 		"forwardinternal" BOOLEAN NOT NULL DEFAULT FALSE,
 		"trackid" VARCHAR (100) NOT NULL DEFAULT '',
+		"readreceipts" INT(1) NOT NULL DEFAULT 0,
+  		"groups" INT(1) NOT NULL DEFAULT 0,
+  		"broadcasts" INT(1) NOT NULL DEFAULT 0,
 		"extra" BLOB DEFAULT NULL,
 		"timestamp" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		CONSTRAINT "webhooks_pkey" PRIMARY KEY ("context", "url")
@@ -221,8 +225,10 @@ func GetBase() migrate.SqlxMigration {
 	  INSERT OR REPLACE INTO migrations (id) VALUES
 	  ('202207131700'),
 	  ('202209281840'),
-	  ('202303011900')
-	  ;
+	  ('202303011900'),
+	  ('202402291556'),
+	  ('202403021242'),
+	  ('202403141920');
 	  `, "")
 	return migration
 }
@@ -273,7 +279,7 @@ func MigrationHandler_202303011900(id string) {
 	db := GetDatabase()
 	servers := db.Servers.FindAll()
 	for _, server := range servers {
-		oldWid := server.WId
+		oldWid := server.Wid
 		if strings.HasSuffix(oldWid, "@migrated") {
 			phone := library.GetPhoneByWId(oldWid)
 			store, err := whatsmeow.WhatsmeowService.GetStoreForMigrated(phone)
@@ -282,7 +288,7 @@ func MigrationHandler_202303011900(id string) {
 				continue
 			}
 
-			server.WId = store.ID.String()
+			server.Wid = store.ID.String()
 			err = db.Servers.Update(server)
 			if err != nil {
 				log.Fatalf("error at update server: %s", err.Error())

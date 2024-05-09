@@ -35,7 +35,7 @@ func RegisterAPIV3Controllers(r chi.Router) {
 	// deprecated, discard/remove on next version
 	r.Post(ControllerPrefixV3+"/senddocument", SendDocumentAPIHandlerV2)
 
-	r.Post(ControllerPrefixV3+"/sendurl", SendDocumentFromUrl)
+	r.Post(ControllerPrefixV3+"/sendurl", SendAnyFromUrl)
 	r.Post(ControllerPrefixV3+"/sendbinary/{chatid}/{filename}/{text}", SendDocumentFromBinary)
 	r.Post(ControllerPrefixV3+"/sendbinary/{chatid}/{filename}", SendDocumentFromBinary)
 	r.Post(ControllerPrefixV3+"/sendbinary/{chatid}", SendDocumentFromBinary)
@@ -84,7 +84,7 @@ func RegisterAPIV3Controllers(r chi.Router) {
 
 // InformationController renders route GET "/{version}/info"
 func InformationControllerV3(w http.ResponseWriter, r *http.Request) {
-	// setting default reponse type as json
+	// setting default response type as json
 	w.Header().Set("Content-Type", "application/json")
 
 	response := &models.QpInfoResponse{}
@@ -131,7 +131,7 @@ func DownloadControllerV3(w http.ResponseWriter, r *http.Request) {
 	// Checking for ready state
 	status := server.GetStatus()
 	if status != whatsapp.Ready {
-		err = &ApiServerNotReadyException{Wid: server.GetWid(), Status: status}
+		err = &ApiServerNotReadyException{Wid: server.GetWId(), Status: status}
 		response.ParseError(err)
 		RespondInterfaceCode(w, response, http.StatusServiceUnavailable)
 		return

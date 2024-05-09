@@ -1,5 +1,7 @@
 package whatsapp
 
+import "encoding/json"
+
 type WhatsappMessageType uint
 
 const (
@@ -13,6 +15,7 @@ const (
 	ContactMessageType
 	CallMessageType
 	SystemMessageType
+	RevokeMessageType
 
 	// Messages that isn't important for this whatsapp service
 	DiscardMessageType
@@ -38,7 +41,15 @@ func (Type WhatsappMessageType) String() string {
 		return "call"
 	case SystemMessageType:
 		return "system"
+	case RevokeMessageType:
+		return "revoke"
+	case DiscardMessageType:
+		return "discard"
 	}
 
 	return "unknown"
+}
+
+func (s WhatsappMessageType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
 }

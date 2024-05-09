@@ -3,25 +3,25 @@
   "nodes": [
     {
       "parameters": {
-        "baseUrl": "={{$json[\"query\"][\"qphost\"]}}",
-        "token": "={{$json[\"query\"][\"qptoken\"]}}",
+        "baseUrl": "={{$json.extra.qphost}}",
+        "token": "={{$json.extra.qptoken}}",
         "resource": "webhook",
         "operation": "setup",
-        "url": "={{ $json.query.n8nhost?.replace(/\\/+$/, '') ?? \"https://\" + $json.headers.host }}/webhook/to-chatwoot",
+        "url": "={{ $json.extra.n8nhost?.replace(/\\/+$/, '') ?? \"https://\" + $json.headers.host }}/webhook/to-chatwoot",
         "trackId": "chatwoot",
         "extraAttributes": {
           "attribute": [
             {
               "key": "identifier",
-              "value": "={{$json[\"query\"][\"identifier\"]}}"
+              "value": "={{$json.extra.identifier}}"
             },
             {
               "key": "cwhost",
-              "value": "={{$json[\"query\"][\"cwhost\"]}}"
+              "value": "={{$json.extra.cwhost}}"
             },
             {
               "key": "inbox",
-              "value": "={{$json[\"query\"][\"inbox\"]}}"
+              "value": "={{$json.extra.inbox}}"
             },
             {
               "key": "account",
@@ -29,23 +29,31 @@
             },
             {
               "key": "utoken",
-              "value": "={{$json[\"query\"][\"utoken\"]}}"
+              "value": "={{$json.extra.utoken}}"
             },
             {
               "key": "atoken",
-              "value": "={{$json[\"query\"][\"atoken\"]}}"
+              "value": "={{$json.extra.atoken}}"
             },
             {
               "key": "account",
-              "value": "={{$json[\"query\"][\"account\"]}}"
+              "value": "={{$json.extra.account}}"
             },
             {
               "key": "qphost",
-              "value": "={{$json[\"query\"][\"qphost\"]}}"
+              "value": "={{$json.extra.qphost}}"
             },
             {
               "key": "qptoken",
-              "value": "={{$json[\"query\"][\"qptoken\"]}}"
+              "value": "={{$json.extra.qptoken}}"
+            },
+            {
+              "key": "singlethread",
+              "value": "={{ ($json.query.st ?? $json.query.singlethread) ? true : undefined }}"
+            },
+            {
+              "key": "soc",
+              "value": "={{ $json.query.soc }}"
             }
           ]
         }
@@ -55,15 +63,15 @@
       "type": "n8n-nodes-quepasa.quepasa",
       "typeVersion": 1,
       "position": [
-        -180,
+        -220,
         360
       ],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "baseUrl": "={{$json[\"query\"][\"qphost\"]}}",
-        "token": "={{$json[\"query\"][\"qptoken\"]}}",
+        "baseUrl": "={{$json.extra.qphost}}",
+        "token": "={{$json.extra.qptoken}}",
         "resource": "webhook",
         "operation": "remove",
         "url": "=https://{{$json[\"headers\"][\"host\"]}}/webhook/to-chatwoot"
@@ -73,8 +81,8 @@
       "type": "n8n-nodes-quepasa.quepasa",
       "typeVersion": 1,
       "position": [
-        -180,
-        540
+        -220,
+        520
       ],
       "continueOnFail": true
     },
@@ -106,16 +114,16 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
       "position": [
-        -540,
-        560
+        -600,
+        520
       ]
     },
     {
       "parameters": {
-        "baseUrl": "={{ $json.params.cwhost }}",
+        "baseUrl": "={{ $json.extra.cwhost }}",
         "sourceId": "={{ $json.params.source_id }}",
         "operation": "messageCreate",
-        "inboxIdentifier": "={{ $json.params.identifier }}",
+        "inboxIdentifier": "={{ $json.extra.identifier }}",
         "conversationId": "={{ $json.params.conversation_id }}",
         "content": "={{$json[\"response\"]}}"
       },
@@ -124,7 +132,7 @@
       "type": "n8n-nodes-chatwoot.chatwoot",
       "typeVersion": 1,
       "position": [
-        3220,
+        3440,
         320
       ]
     },
@@ -146,7 +154,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        440,
+        660,
         400
       ]
     },
@@ -168,41 +176,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        440,
-        2060
-      ]
-    },
-    {
-      "parameters": {
-        "dataType": "string",
-        "value1": "={{$json.content?.toLowerCase() ?? \"\"}}",
-        "rules": {
-          "rules": [
-            {
-              "operation": "startsWith",
-              "value2": "/webhook"
-            },
-            {
-              "operation": "startsWith",
-              "value2": "/info",
-              "output": 1
-            },
-            {
-              "operation": "startsWith",
-              "value2": "/agentbot",
-              "output": 2
-            }
-          ]
-        },
-        "fallbackOutput": 3
-      },
-      "id": "155b84a4-6cbe-4a57-88bf-d5d4824aa1e0",
-      "name": "Switch Start",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 1,
-      "position": [
-        -3080,
-        380
+        700,
+        2920
       ]
     },
     {
@@ -225,8 +200,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -4020,
-        420
+        -4060,
+        440
       ]
     },
     {
@@ -236,7 +211,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -3780,
+        -3860,
         580
       ]
     },
@@ -256,7 +231,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        120,
+        420,
         540
       ]
     },
@@ -278,14 +253,14 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        440,
+        660,
         700
       ]
     },
     {
       "parameters": {
-        "baseUrl": "={{$json[\"query\"][\"qphost\"]}}",
-        "token": "={{$json[\"query\"][\"qptoken\"]}}",
+        "baseUrl": "={{$json.extra.qphost}}",
+        "token": "={{$json.extra.qptoken}}",
         "resource": "information"
       },
       "id": "815775f7-c630-4d75-9c59-15ff119484fa",
@@ -293,7 +268,7 @@
       "type": "n8n-nodes-quepasa.quepasa",
       "typeVersion": 1,
       "position": [
-        -540,
+        -220,
         940
       ],
       "continueOnFail": true
@@ -314,7 +289,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -180,
+        40,
         940
       ]
     },
@@ -336,7 +311,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        440,
+        660,
         960
       ]
     },
@@ -349,14 +324,14 @@
       "type": "n8n-nodes-base.function",
       "typeVersion": 1,
       "position": [
-        120,
+        340,
         920
       ]
     },
     {
       "parameters": {
-        "baseUrl": "={{$json[\"query\"][\"qphost\"]}}",
-        "token": "={{$json[\"query\"][\"qptoken\"]}}",
+        "baseUrl": "={{$json.extra.qphost}}",
+        "token": "={{$json.extra.qptoken}}",
         "resource": "webhook",
         "operation": "clear"
       },
@@ -365,8 +340,8 @@
       "type": "n8n-nodes-quepasa.quepasa",
       "typeVersion": 1,
       "position": [
-        -180,
-        720
+        -220,
+        680
       ]
     },
     {
@@ -390,7 +365,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        2340,
+        -1900,
         20
       ]
     },
@@ -401,8 +376,8 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -720,
-        2060
+        -500,
+        2920
       ]
     },
     {
@@ -421,7 +396,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        1060,
+        1280,
         1220
       ]
     },
@@ -446,7 +421,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -3580,
+        -3460,
         400
       ]
     },
@@ -460,19 +435,19 @@
             },
             {
               "name": "cwhost",
-              "value": "={{$json.query.cwhost}}"
+              "value": "={{$json.extra.cwhost}}"
             },
             {
               "name": "account",
-              "value": "={{$json.query.account}}"
+              "value": "={{$json.extra.account}}"
             },
             {
               "name": "inbox",
-              "value": "={{$json.query.inbox}}"
+              "value": "={{$json.extra.inbox}}"
             },
             {
               "name": "utoken",
-              "value": "={{$json.query.utoken}}"
+              "value": "={{$json.extra.utoken}}"
             }
           ]
         },
@@ -483,7 +458,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        -3780,
+        -3640,
         400
       ]
     },
@@ -494,8 +469,8 @@
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        -4240,
-        420
+        -4260,
+        440
       ]
     },
     {
@@ -505,20 +480,20 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        -540,
+        -320,
         1200
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$json.cwhost}}/api/v1/accounts/{{$json.account}}/inboxes/{{$json.inbox}}/set_agent_bot",
+        "url": "={{$json.extra.cwhost}}/api/v1/accounts/{{$json.extra.account}}/inboxes/{{$json.extra.inbox}}/set_agent_bot",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "api_access_token",
-              "value": "={{$json.utoken}}"
+              "value": "={{$json.extra.utoken}}"
             }
           ]
         },
@@ -545,7 +520,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [
-        -280,
+        -60,
         1360
       ],
       "continueOnFail": true
@@ -566,7 +541,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -80,
+        140,
         1360
       ]
     },
@@ -588,7 +563,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        120,
+        340,
         1240
       ]
     },
@@ -610,7 +585,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        120,
+        340,
         1460
       ]
     },
@@ -625,7 +600,7 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
       "position": [
-        440,
+        660,
         1220
       ]
     },
@@ -648,8 +623,8 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 1,
       "position": [
-        -1000,
-        1880
+        -720,
+        2540
       ]
     },
     {
@@ -661,7 +636,7 @@
           "parameters": [
             {
               "name": "identifier",
-              "value": "={{ $json.query.identifier }}"
+              "value": "={{ $json.extra.identifier }}"
             },
             {
               "name": "destination",
@@ -680,8 +655,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -280,
-        1740
+        -60,
+        2220
       ],
       "continueOnFail": true
     },
@@ -694,7 +669,7 @@
           "parameters": [
             {
               "name": "identifier",
-              "value": "={{ $json.query.identifier }}"
+              "value": "={{ $json.extra.identifier }}"
             },
             {
               "name": "contextId",
@@ -709,8 +684,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [
-        -280,
-        1940
+        -60,
+        2400
       ],
       "continueOnFail": true
     },
@@ -731,8 +706,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -480,
-        1840
+        -260,
+        2300
       ]
     },
     {
@@ -751,8 +726,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        -80,
-        1840
+        140,
+        2300
       ]
     },
     {
@@ -773,8 +748,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        120,
-        1740
+        340,
+        2200
       ]
     },
     {
@@ -795,8 +770,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        120,
-        1940
+        340,
+        2400
       ]
     },
     {
@@ -806,33 +781,23 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        320,
-        1840
+        540,
+        2300
       ]
     },
     {
       "parameters": {
-        "content": "## (1.0.2) Recommendations \n* Remember set timeout to 15 seconds \n* string empty for switch\n* getting identifier from postgres",
-        "width": 395
+        "content": "## (1.0.9) Updates\n* added soc extra variable\n\n## Recommendations \n* Remember set timeout to 15 seconds \n* string empty for switch\n* getting identifier from postgres",
+        "height": 221.8901373993275,
+        "width": 444.914796845942
       },
       "id": "ccf59cc4-7a1b-47c4-afeb-56e49290d5e6",
       "name": "Sticky Note",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -4360,
-        -20
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "d4e8617d-1417-44eb-80a3-66ea64d3e694",
-      "name": "No Operation, do nothing",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        -3340,
-        380
+        -4400,
+        -60
       ]
     },
     {
@@ -840,7 +805,7 @@
         "conditions": {
           "string": [
             {
-              "value1": "={{$json[\"query\"][\"identifier\"]}}",
+              "value1": "={{$json.extra.identifier}}",
               "operation": "isEmpty"
             }
           ]
@@ -851,14 +816,14 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        1600,
-        0
+        -3260,
+        380
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT \"public\".\"channel_api\".\"identifier\", \"public\".\"inboxes\".\"channel_id\" FROM \"public\".\"channel_api\" INNER JOIN \"public\".\"inboxes\" ON \"public\".\"channel_api\".\"id\" = \"public\".\"inboxes\".\"channel_id\" WHERE \"public\".\"channel_api\".\"account_id\"='{{$json.query.account}}' AND \"public\".\"inboxes\".\"id\" = '{{$json.query.inbox}}';",
+        "query": "=SELECT \"public\".\"channel_api\".\"identifier\", \"public\".\"inboxes\".\"channel_id\" FROM \"public\".\"channel_api\" INNER JOIN \"public\".\"inboxes\" ON \"public\".\"channel_api\".\"id\" = \"public\".\"inboxes\".\"channel_id\" WHERE \"public\".\"channel_api\".\"account_id\"='{{$json.extra.account}}' AND \"public\".\"inboxes\".\"id\" = '{{$json.extra.inbox}}';",
         "additionalFields": {}
       },
       "id": "343dab73-80ea-4c88-9e8c-5f0be1cbe077",
@@ -866,8 +831,8 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 1,
       "position": [
-        1800,
-        -120
+        -3060,
+        260
       ],
       "alwaysOutputData": true,
       "credentials": {
@@ -888,8 +853,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2.1,
       "position": [
-        2160,
-        -40
+        -2740,
+        340
       ]
     },
     {
@@ -898,7 +863,7 @@
         "values": {
           "string": [
             {
-              "name": "query.identifier",
+              "name": "extra.identifier",
               "value": "={{ $json.identifier }}"
             }
           ]
@@ -910,8 +875,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
       "position": [
-        1980,
-        -120
+        -2900,
+        260
       ]
     },
     {
@@ -924,12 +889,12 @@
               "value": "={{ $json.params }}"
             },
             {
-              "name": "params.cwhost",
-              "value": "={{$json.query.cwhost}}"
+              "name": "extra.cwhost",
+              "value": "={{ $json.query.cwhost ?? $json.extra.cwhost }}"
             },
             {
-              "name": "params.identifier",
-              "value": "={{$json.query.identifier}}"
+              "name": "extra.identifier",
+              "value": "={{ $json.query.identifier ?? $json.extra.identifier }}"
             }
           ]
         },
@@ -940,7 +905,7 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
       "position": [
-        2520,
+        2740,
         20
       ]
     },
@@ -951,7 +916,7 @@
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        2540,
+        2760,
         680
       ]
     },
@@ -959,26 +924,15 @@
       "parameters": {
         "content": "## Main Flow\n",
         "height": 577.449009853676,
-        "width": 1184.9286677799867
+        "width": 2082.865769000268
       },
       "id": "5c273573-7ad5-4039-89b5-06943f59eb98",
       "name": "Sticky Note1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -4360,
+        -4396.377270339875,
         180
-      ]
-    },
-    {
-      "parameters": {},
-      "id": "ea18b050-afb9-444a-9196-bae4bd174e1f",
-      "name": "No Operation, do nothing1",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        -3080,
-        0
       ]
     },
     {
@@ -992,8 +946,494 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2.1,
       "position": [
-        3000,
+        3220,
         320
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "extra.qphost",
+              "value": "={{$json.extra.qphost ?? $json.query.qphost}}"
+            },
+            {
+              "name": "extra.qptoken",
+              "value": "={{$json.extra.qptoken ?? $json.query.qptoken ?? $json.extra.identifier ?? $json.query.identifier}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3c765636-8af2-4dba-adc7-9d978f9ed49c",
+      "name": "Set Extra Payload Adjusts",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        -2540,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const item = $input.item.json;\nconst content = item.body?.content;\nif (content) {\n  item.command = content.trim().toLowerCase().split(' ').shift();\n  if (item.command)\n  {\n    item.arguments = content.substring(item.command.length+1)\n    if (item.command.startsWith('/')) { \n      item.command = item.command.substring(1);\n    }\n  }\n}\nreturn $input.item;"
+      },
+      "id": "db3a67b8-ac43-4e31-92ab-d65fc5fe951e",
+      "name": "Command & Arguments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2360,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "webhook",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "webhook"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "f7f91a20-b86f-4307-96dd-93f169eacc8d",
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "=info",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "info"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "08ec1e52-ab50-4c59-abe9-501811ebc270",
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "=agentbot",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "agentbot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "b3cb020e-ae4b-4116-ad4d-80d38ec11748",
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "=toggle",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "toggle"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "45107e23-afce-41a0-9891-0acbfbc0e7c3",
+                    "leftValue": "={{$json.command}}",
+                    "rightValue": "=webcallback",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "webcallback"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "6ec458a4-7b53-4a3c-b829-f06f9ba24b0b",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -1900,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "response",
+              "value": "=!Invalid call, try:\n-----------------------------------------------\n/toggle groups\n/toggle broadcasts\n/toggle readreceipts\n/toggle calls"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3372995f-6ac4-4985-9ab9-8d607d410709",
+      "name": "Set Response From Invalid Toggle",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        -300,
+        2140
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$json.extra.qphost}}/info",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-QUEPASA-TOKEN",
+              "value": "={{$json.extra.qptoken}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "groups",
+              "value": "={{ $json.arguments.split(' ').pop() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "715d206c-01b7-437c-be3f-b9430fd27334",
+      "name": "Request Toggle Groups",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -300,
+        1580
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.arguments}}",
+                    "rightValue": "groups",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "groups"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "4b5810d9-3ae4-4c88-b295-45188a7b3c4c",
+                    "leftValue": "={{$json.arguments}}",
+                    "rightValue": "=broadcasts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "broadcasts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "31ab53ad-575a-428c-ae6f-bf7d31cc6051",
+                    "leftValue": "={{$json.arguments}}",
+                    "rightValue": "=readreceipts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "readreceipts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "a6290151-1e97-4077-94db-2915a00481d7",
+                    "leftValue": "={{$json.arguments}}",
+                    "rightValue": "=calls",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "calls"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "6fc0bf5b-eda0-46e5-b674-616691e3d14a",
+      "name": "Switch Toggle",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -620,
+        1820
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fe413507-88f1-4b91-8cfd-0d9b1ad13d82",
+      "name": "Toggle NoOp",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        120,
+        1700
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$json.extra.qphost}}/info",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-QUEPASA-TOKEN",
+              "value": "={{$json.extra.qptoken}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "calls",
+              "value": "={{ $json.arguments.split(' ').pop() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a6e5bfff-968e-4fa8-9fd3-39450de4dcee",
+      "name": "Request Toggle Calls",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -300,
+        2000
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$json.extra.qphost}}/info",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-QUEPASA-TOKEN",
+              "value": "={{$json.extra.qptoken}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "broadcasts",
+              "value": "={{ $json.arguments.split(' ').pop() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "01ac80ea-d14e-478d-af3b-2d1623e6a5e2",
+      "name": "Request Toggle Broadcasts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -300,
+        1720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{$json.extra.qphost}}/info",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-QUEPASA-TOKEN",
+              "value": "={{$json.extra.qptoken}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "readreceipts",
+              "value": "={{ $json.arguments.split(' ').pop() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5a99fe63-c03a-4e4e-99fc-3700b34ba3dc",
+      "name": "Request Toggle ReadReceipts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -300,
+        1860
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "8bbf374d-0fc2-4f4c-afc4-8ebdd1551e6d",
+              "leftValue": "={{ $json.body?.content_attributes?.automation_rule_id }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "number",
+                "operation": "notExists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "looseTypeValidation": true
+        }
+      },
+      "id": "d74cc54b-165d-4df5-b91a-ab9418c39947",
+      "name": "If Not From Automations",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -3860,
+        420
       ]
     }
   ],
@@ -1068,43 +1508,11 @@
         ]
       ]
     },
-    "Switch Start": {
-      "main": [
-        [
-          {
-            "node": "Webhook Methods",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "QP - Info",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Agent Control",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Switch Start1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "If Message Out": {
       "main": [
         [
           {
-            "node": "Set Payload",
+            "node": "If Not From Automations",
             "type": "main",
             "index": 0
           }
@@ -1235,7 +1643,7 @@
       "main": [
         [
           {
-            "node": "No Operation, do nothing",
+            "node": "If Missing Identifier",
             "type": "main",
             "index": 0
           }
@@ -1453,22 +1861,6 @@
         ]
       ]
     },
-    "No Operation, do nothing": {
-      "main": [
-        [
-          {
-            "node": "Switch Start",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "No Operation, do nothing1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "If Missing Identifier": {
       "main": [
         [
@@ -1485,7 +1877,7 @@
         ],
         [
           {
-            "node": "Set Parameters From Control Chat",
+            "node": "Set Extra Payload Adjusts",
             "type": "main",
             "index": 0
           }
@@ -1507,7 +1899,7 @@
       "main": [
         [
           {
-            "node": "Set Parameters From Control Chat",
+            "node": "Set Extra Payload Adjusts",
             "type": "main",
             "index": 0
           }
@@ -1547,17 +1939,6 @@
         ]
       ]
     },
-    "No Operation, do nothing1": {
-      "main": [
-        [
-          {
-            "node": "If Missing Identifier",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Merge Parameters": {
       "main": [
         [
@@ -1579,6 +1960,195 @@
           }
         ]
       ]
+    },
+    "Set Extra Payload Adjusts": {
+      "main": [
+        [
+          {
+            "node": "Command & Arguments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Command & Arguments": {
+      "main": [
+        [
+          {
+            "node": "Set Parameters From Control Chat",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Webhook Methods",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "QP - Info",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agent Control",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch Toggle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch Start1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "NoOp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Response From Invalid Toggle": {
+      "main": [
+        [
+          {
+            "node": "If Reponse Not Empty ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Toggle Groups": {
+      "main": [
+        [
+          {
+            "node": "Toggle NoOp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Toggle": {
+      "main": [
+        [
+          {
+            "node": "Request Toggle Groups",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Request Toggle Broadcasts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Request Toggle ReadReceipts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Request Toggle Calls",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Response From Invalid Toggle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Toggle NoOp": {
+      "main": [
+        [
+          {
+            "node": "IF Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Toggle Calls": {
+      "main": [
+        [
+          {
+            "node": "Toggle NoOp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Toggle Broadcasts": {
+      "main": [
+        [
+          {
+            "node": "Toggle NoOp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Toggle ReadReceipts": {
+      "main": [
+        [
+          {
+            "node": "Toggle NoOp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Not From Automations": {
+      "main": [
+        [
+          {
+            "node": "Set Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1588,11 +2158,12 @@
     "executionTimeout": 15,
     "executionOrder": "v1"
   },
-  "versionId": "57bac283-d6ea-4c57-8619-a2c2707913e7",
-  "id": "1001",
+  "versionId": "2ef06703-1314-4190-a946-40afb43f0d4d",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "2b4ab318d4f8eba20155e50db9998481bc305e3588e42ee69176091736c9d07e"
   },
+  "id": "1001",
   "tags": [
     {
       "createdAt": "2022-10-13T15:26:11.519Z",
@@ -1607,10 +2178,10 @@
       "name": "chatwoot"
     },
     {
-      "createdAt": "2023-05-19T22:53:24.375Z",
-      "updatedAt": "2023-05-19T22:53:24.375Z",
-      "id": "11",
-      "name": "NOCODELEAKS"
+      "createdAt": "2023-05-19T22:54:38.266Z",
+      "updatedAt": "2023-05-19T22:54:38.266Z",
+      "id": "13",
+      "name": "github.com/nocodeleaks"
     }
   ]
 }

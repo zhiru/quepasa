@@ -16,8 +16,8 @@ func NewEmptyConnection(callback func(string)) (conn whatsapp.IWhatsappConnectio
 	return NewWhatsmeowEmptyConnection(callback)
 }
 
-func NewConnection(wid string, serverLogger *log.Entry) (whatsapp.IWhatsappConnection, error) {
-	return NewWhatsmeowConnection(wid, serverLogger)
+func NewConnection(options *whatsapp.WhatsappConnectionOptions) (whatsapp.IWhatsappConnection, error) {
+	return NewWhatsmeowConnection(options)
 }
 
 func TryUpdateHttpChannel(ch chan<- []byte, value []byte) (closed bool) {
@@ -43,6 +43,7 @@ func SignInWithQRCode(ctx context.Context, user *QpUser, out chan<- []byte) (err
 		return
 	}
 
+	logger := con.GetLogger()
 	qrChan := make(chan string)
 	defer close(qrChan)
 	go func() {
@@ -50,7 +51,7 @@ func SignInWithQRCode(ctx context.Context, user *QpUser, out chan<- []byte) (err
 			var png []byte
 			png, err := qrcode.Encode(qrBase64, qrcode.Medium, 256)
 			if err != nil {
-				log.Errorf("(qrcode) encode fail, %s", err.Error())
+				logger.Errorf("(qrcode) encode fail, %s", err.Error())
 				return
 			}
 
@@ -58,13 +59,13 @@ func SignInWithQRCode(ctx context.Context, user *QpUser, out chan<- []byte) (err
 			if !TryUpdateHttpChannel(out, []byte(encodedPNG)) {
 				// expected error, means that websocket was closed
 				// probably user has gone out page
-				err = fmt.Errorf("(qrcode) cant write to output")
+				logger.Error("(qrcode) cant write to output")
 				return
 			}
 		}
 	}()
 
-	log.Info("(qrcode) getting qrcode channel ...")
+	logger.Info("(qrcode) getting qrcode channel ...")
 	return con.GetWhatsAppQRChannel(ctx, qrChan)
 }
 
@@ -224,8 +225,64 @@ func ToWhatsappMessage(destination string, text string, attach *whatsapp.Whatsap
 
 	if attach != nil {
 		msg.Attachment = attach
-		msg.Type = whatsapp.GetMessageType(attach.Mimetype)
+		msg.Type = whatsapp.GetMessageType(attach)
 	}
 	return
 
 }
+
+//#region USING WHATSAPP OPTIONS INTERFACE
+
+func ToggleReadReceipts(source whatsapp.IWhatsappOptions) error {
+	options := source.GetOptions()
+
+	if options.ReadReceipts == whatsapp.UnSetBooleanType {
+		options.ReadReceipts = whatsapp.TrueBooleanType
+	} else if options.ReadReceipts == whatsapp.TrueBooleanType {
+		options.ReadReceipts = whatsapp.FalseBooleanType
+	} else {
+		options.ReadReceipts = whatsapp.UnSetBooleanType
+	}
+	return source.Save()
+}
+
+func ToggleGroups(source whatsapp.IWhatsappOptions) error {
+	options := source.GetOptions()
+
+	if options.Groups == whatsapp.UnSetBooleanType {
+		options.Groups = whatsapp.TrueBooleanType
+	} else if options.Groups == whatsapp.TrueBooleanType {
+		options.Groups = whatsapp.FalseBooleanType
+	} else {
+		options.Groups = whatsapp.UnSetBooleanType
+	}
+	return source.Save()
+}
+
+func ToggleBroadcasts(source whatsapp.IWhatsappOptions) error {
+	options := source.GetOptions()
+
+	if options.Broadcasts == whatsapp.UnSetBooleanType {
+		options.Broadcasts = whatsapp.TrueBooleanType
+	} else if options.Broadcasts == whatsapp.TrueBooleanType {
+		options.Broadcasts = whatsapp.FalseBooleanType
+	} else {
+		options.Broadcasts = whatsapp.UnSetBooleanType
+	}
+	return source.Save()
+}
+
+func ToggleCalls(source whatsapp.IWhatsappOptions) error {
+	options := source.GetOptions()
+
+	if options.Calls == whatsapp.UnSetBooleanType {
+		options.Calls = whatsapp.TrueBooleanType
+	} else if options.Calls == whatsapp.TrueBooleanType {
+		options.Calls = whatsapp.FalseBooleanType
+	} else {
+		options.Calls = whatsapp.UnSetBooleanType
+	}
+	return source.Save()
+}
+
+//#endregion
